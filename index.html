@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="LexiGuess – daily lexicographic word distance puzzle">
+  <title>LexiGuess</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f5f5;
+      --surface: #ffffff;
+      --border: #d3d6da;
+      --text: #1a1a1b;
+      --muted: #787c7e;
+      --accent: #538d4e;
+      --key-bg: #d3d6da;
+      --close: #538d4e;
+      --mid: #b59f3b;
+      --far: #e07040;
+      --vfar: #c0392b;
+      --header-h: 50px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+      font-size: 16px;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100svh;
+      min-height: 100vh;
+    }
+
+    /* ===== HEADER ===== */
+    header {
+      width: 100%;
+      max-width: 500px;
+      height: var(--header-h);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      padding: 0 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.1rem;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text);
+      transition: background 0.15s;
+    }
+    .icon-btn:hover { background: var(--border); }
+    .icon-btn[hidden] { visibility: hidden; }
+
+    /* ===== MAIN ===== */
+    main {
+      width: 100%;
+      max-width: 500px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 8px 8px;
+      gap: 10px;
+      overflow-y: auto;
+    }
+
+    /* ===== TARGET SECTION ===== */
+    #target-section {
+      text-align: center;
+      width: 100%;
+    }
+
+    .section-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .section-sublabel {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* ===== TILES ===== */
+    .tile-row {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+    }
+
+    .tile {
+      width: 52px;
+      height: 52px;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: var(--surface);
+      user-select: none;
+      transition: border-color 0.1s;
+    }
+
+    .tile.filled { border-color: #888; }
+    .tile.active { border-color: var(--text); }
+
+    .tile-target {
+      border-color: #888;
+      background: #fafafa;
+    }
+
+    /* ===== SCORE BAR ===== */
+    #score-bar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      padding: 0 4px;
+    }
+
+    #score-bar strong {
+      font-size: 1.05rem;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    /* ===== GUESS HISTORY ===== */
+    #guesses-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .guess-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 8px 10px;
+      border-left: 4px solid transparent;
+      animation: slideIn 0.25s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .guess-row-tiles { display: flex; gap: 3px; }
+
+    .guess-tile {
+      width: 36px;
+      height: 36px;
+      font-size: 1.1rem;
+      border-width: 2px;
+      border-style: solid;
+      border-radius: 3px;
+    }
+
+    .guess-dist {
+      font-size: 0.82rem;
+      font-weight: 700;
+      min-width: 36px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .guess-bar-wrap {
+      flex: 1;
+      height: 6px;
+      background: #eee;
+      border-radius: 3px;
+      overflow: hidden;
+      min-width: 30px;
+    }
+
+    .guess-bar {
+      height: 100%;
+      border-radius: 3px;
+      width: 0;
+      transition: width 0.4s ease;
+    }
+
+    /* ===== INPUT SECTION ===== */
+    #input-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #input-tiles.shake {
+      animation: shake 0.4s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%       { transform: translateX(-6px); }
+      40%       { transform: translateX(6px); }
+      60%       { transform: translateX(-4px); }
+      80%       { transform: translateX(4px); }
+    }
+
+    #btn-guess {
+      background: var(--text);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 28px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: opacity 0.15s;
+    }
+    #btn-guess:hover { opacity: 0.85; }
+    #btn-guess:disabled { opacity: 0.4; cursor: default; }
+
+    /* ===== KEYBOARD ===== */
+    #keyboard {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .kb-row {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+    }
+
+    .kb-key {
+      height: 52px;
+      min-width: 34px;
+      flex: 1;
+      max-width: 44px;
+      background: var(--key-bg);
+      color: var(--text);
+      border: none;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: uppercase;
+      touch-action: manipulation;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.1s, opacity 0.1s;
+      user-select: none;
+    }
+
+    .kb-key:active { opacity: 0.7; }
+    .kb-key.wide { min-width: 52px; max-width: 62px; font-size: 0.72rem; }
+
+    /* ===== TOAST ===== */
+    #toast {
+      position: fixed;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(26,26,27,0.92);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      z-index: 100;
+      pointer-events: none;
+      white-space: nowrap;
+      animation: toastIn 0.2s ease;
+    }
+    #toast[hidden] { display: none; }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    /* ===== MODALS ===== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 50;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    .modal-backdrop[hidden] { display: none; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .modal-sheet {
+      background: var(--surface);
+      border-radius: 16px 16px 0 0;
+      width: 100%;
+      max-width: 500px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 20px 20px 32px;
+      animation: slideUp 0.25s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); }
+      to   { transform: translateY(0); }
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .modal-header h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 4px;
+    }
+
+    /* HELP MODAL */
+    .help-section {
+      margin-bottom: 14px;
+      line-height: 1.65;
+      font-size: 0.88rem;
+      color: var(--text);
+    }
+
+    .help-section p { margin-bottom: 8px; }
+    .help-section strong { font-weight: 700; }
+
+    .example-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      margin: 6px 0;
+    }
+
+    .ex-chip {
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 0.78rem;
+      color: white;
+    }
+
+    /* END MODAL */
+    #result-target {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: 6px;
+      text-align: center;
+      margin: 10px 0;
+      text-transform: uppercase;
+    }
+
+    #result-score-wrap {
+      text-align: center;
+      margin: 10px 0 16px;
+    }
+
+    #result-score {
+      font-size: 3rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    #result-rating {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .result-guess-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.84rem;
+      padding: 5px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .result-guess-word {
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      min-width: 60px;
+    }
+
+    .result-dist-bar-wrap {
+      flex: 1;
+      height: 6px;
+      background: #eee;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .result-dist-bar {
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    .result-dist-num {
+      min-width: 30px;
+      text-align: right;
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+
+    #result-timer {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 12px;
+    }
+
+    #btn-share-end {
+      display: block;
+      width: 100%;
+      margin-top: 14px;
+      background: var(--text);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 13px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+    #btn-share-end:hover { opacity: 0.85; }
+
+    /* ===== MOBILE TWEAKS ===== */
+    @media (max-width: 380px) {
+      .tile { width: 46px; height: 46px; font-size: 1.55rem; }
+      .guess-tile { width: 32px; height: 32px; font-size: 1rem; }
+      .kb-key { height: 46px; font-size: 0.75rem; }
+    }
+
+    @media (min-width: 480px) {
+      main { padding: 16px 12px 12px; gap: 12px; }
+      .kb-key { height: 58px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <button class="icon-btn" id="btn-help" aria-label="How to play">?</button>
+  <h1>LexiGuess</h1>
+  <button class="icon-btn" id="btn-share" aria-label="Share result" hidden>&#9651;</button>
+</header>
+
+<main id="app">
+  <section id="target-section">
+    <div class="section-label">Today's target word</div>
+    <div class="tile-row" id="target-tiles" aria-label="Target word"></div>
+    <div class="section-sublabel">Find words closest to it in the dictionary &mdash; 5 guesses, lowest score wins</div>
+  </section>
+
+  <div id="score-bar">
+    <span>Score: <strong id="running-score">0</strong></span>
+    <span id="guesses-left">5 guesses remaining</span>
+  </div>
+
+  <section id="guesses-section" aria-label="Guess history"></section>
+
+  <section id="input-section">
+    <div class="tile-row" id="input-tiles" aria-label="Current guess"></div>
+    <button id="btn-guess">Guess</button>
+  </section>
+
+  <div id="keyboard" role="group" aria-label="Keyboard"></div>
+</main>
+
+<div id="toast" hidden role="status" aria-live="polite"></div>
+
+<!-- HELP MODAL -->
+<div class="modal-backdrop" id="modal-help" hidden>
+  <div class="modal-sheet" role="dialog" aria-modal="true" aria-label="How to play">
+    <div class="modal-header">
+      <h2>How to Play</h2>
+      <button class="modal-close" data-close="modal-help" aria-label="Close">&#10005;</button>
+    </div>
+    <div class="help-section">
+      <p>A <strong>target word</strong> from the Wordle list is shown at the top. Your goal is to guess words that are <strong>lexicographically close</strong> to it.</p>
+      <p><strong>Lexicographic distance</strong> = how many positions apart two words are when all Wordle words are sorted alphabetically. A distance of 1 means adjacent in the list.</p>
+      <p>You get <strong>5 guesses</strong>. Each guess scores points equal to its distance. Lower total score is better. Distance 0 means you guessed the exact target!</p>
+    </div>
+    <div class="help-section">
+      <p><strong>Distance color guide:</strong></p>
+      <div class="example-bar"><span class="ex-chip" style="background:#538d4e">0&ndash;10</span> Very close — neighbors in the list</div>
+      <div class="example-bar"><span class="ex-chip" style="background:#b59f3b">11&ndash;50</span> Close — same neighborhood</div>
+      <div class="example-bar"><span class="ex-chip" style="background:#e07040">51&ndash;200</span> Moderate distance</div>
+      <div class="example-bar"><span class="ex-chip" style="background:#c0392b">200+</span> Far away</div>
+    </div>
+    <div class="help-section">
+      <p><strong>Tip:</strong> Words that start with the same letter or two are usually closest. Think alphabetically!</p>
+      <p style="font-size:0.75rem;color:var(--muted)">Override today's word: add <code>?seed=test</code> to the URL, or run <code>setSeed("test")</code> in the console. Use <code>setSeed()</code> to clear.</p>
+    </div>
+  </div>
+</div>
+
+<!-- END GAME MODAL -->
+<div class="modal-backdrop" id="modal-end" hidden>
+  <div class="modal-sheet" role="dialog" aria-modal="true" aria-label="Game result">
+    <div class="modal-header">
+      <h2>Result</h2>
+      <button class="modal-close" data-close="modal-end" aria-label="Close">&#10005;</button>
+    </div>
+    <div id="result-target"></div>
+    <div id="result-score-wrap">
+      <div id="result-score"></div>
+      <div id="result-rating"></div>
+    </div>
+    <div id="result-guesses"></div>
+    <div id="result-timer"></div>
+    <button id="btn-share-end">Share Result</button>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+// WORD LIST — Standard Wordle answers, sorted at runtime
+// =====================================================================
+const _RAW = "aback,abase,abate,abbey,abbot,abhor,abide,abled,abode,abort,about,above,abuse,abyss,acorn,acrid,actor,acute,adage,adapt,adept,admin,admit,adobe,adopt,adore,adorn,adult,affix,afire,afoot,afoul,after,again,agape,agate,agent,agile,aging,aglow,agony,agora,agree,ahead,aider,aisle,alarm,album,alert,algae,alibi,alien,align,alike,alive,allay,alley,allot,allow,alloy,aloft,alone,along,aloof,aloud,alpha,altar,alter,amass,amaze,amber,amble,amend,amiss,amity,among,ample,amply,amuse,angel,anger,angle,angry,angst,anime,ankle,annex,annoy,annul,anode,antic,anvil,aorta,apart,aphid,aping,apnea,apple,apply,apron,aptly,arbor,ardor,arena,argue,arise,armor,aroma,arose,array,arrow,arson,artsy,ascot,ashen,aside,askew,assay,asset,atoll,atone,attic,audio,audit,augur,aunty,avail,avert,avian,avoid,await,awake,award,aware,awash,awful,awoke,axial,axiom,axion,azure,bacon,badge,badly,bagel,baggy,baker,baler,balmy,banal,banjo,barge,baron,basal,basic,basil,basin,basis,baste,batch,bathe,baton,batty,bawdy,bayou,beach,beady,beard,beast,beech,beefy,befit,began,begat,beget,begin,begun,being,belch,belie,belle,belly,below,bench,beret,berry,berth,beset,betel,bevel,bezel,bible,bicep,biddy,bigot,bilge,billy,binge,bingo,biome,birch,birth,bison,bitty,black,blade,blame,bland,blank,blare,blast,blaze,bleak,bleat,bleed,bleep,blend,bless,blimp,blind,blink,bliss,blitz,bloat,block,bloke,blond,blood,bloom,blown,bluer,bluff,blunt,blurb,blurt,blush,board,boast,bobby,boney,bongo,bonus,booby,boost,booth,booty,booze,boozy,borax,borne,bosom,bossy,botch,bough,boule,bound,bowel,boxer,brace,braid,brain,brake,brand,brash,brass,brave,bravo,brawl,brawn,bread,break,breed,briar,bribe,brick,bride,brief,brine,bring,brink,briny,brisk,broad,broil,broke,brood,brook,broom,broth,brown,brunt,brush,brute,buddy,budge,buggy,bugle,build,built,bulge,bulky,bully,bunch,bunny,burly,burnt,burst,bused,bushy,butch,butte,buxom,buyer,bylaw,cabal,cabby,cabin,cable,cacao,cache,cacti,caddy,cadet,cagey,cairn,camel,cameo,canal,candy,canny,canoe,canon,caper,caput,carat,cargo,carol,carry,carve,caste,catch,cater,catty,caulk,cause,cavil,cease,cedar,cello,chafe,chaff,chain,chair,chalk,champ,chant,chaos,chard,charm,chart,chase,chasm,cheap,cheat,check,cheek,cheer,chess,chest,chick,chide,chief,child,chili,chill,chime,china,chirp,chock,choir,choke,chord,chore,chose,chuck,chump,chunk,churn,chute,cider,cigar,cinch,circa,civic,civil,clack,claim,clamp,clang,clank,clash,clasp,class,clean,clear,cleat,cleft,clerk,click,cliff,climb,cling,clink,cloak,clock,clone,close,cloth,cloud,clout,clove,clown,cluck,clued,clump,clung,coach,coast,cobra,cocoa,colon,color,comet,comfy,comic,comma,conch,condo,conic,copse,coral,corer,corny,couch,cough,could,count,coupe,court,coven,cover,covet,covey,cower,coyly,crack,craft,cramp,crane,crank,crash,crass,crate,crave,crawl,craze,crazy,creak,cream,credo,creed,creek,creep,creme,crepe,crept,cress,crest,crick,cried,crier,crime,crimp,crisp,croak,crock,crone,crony,crook,cross,croup,crowd,crown,crude,cruel,crumb,crump,crush,crust,crypt,cubic,cumin,curio,curly,curry,curse,curve,curvy,cutie,cyber,cycle,cynic,daddy,daily,dairy,daisy,dally,dance,dandy,datum,daunt,dealt,death,debar,debit,debug,debut,decal,decay,decor,decoy,decry,defer,deign,deity,delay,delta,delve,demon,demur,denim,dense,depot,depth,derby,deter,detox,deuce,devil,diary,dicey,digit,dilly,dimly,diner,dingo,dingy,diode,dirge,dirty,disco,ditch,ditto,ditty,diver,dizzy,dodge,dodgy,dogma,doing,dolly,donor,donut,dopey,doubt,dough,dowdy,dowel,downy,dowry,dozen,draft,drain,drake,drama,drank,drape,drawl,drawn,dread,dream,dress,dried,drier,drift,drill,drink,drive,droit,droll,drone,drool,droop,dross,drove,drown,druid,drunk,dryer,dryly,duchy,dully,dummy,dumpy,dunce,dusky,dusty,dutch,duvet,dwarf,dwell,dwelt,dying,eager,eagle,early,earth,easel,eaten,eater,ebony,eclat,edict,edify,eerie,egret,eight,eject,eking,elate,elbow,elder,elect,elegy,elfin,elide,elite,elope,elude,email,embed,ember,emcee,empty,enact,endow,enema,enemy,enjoy,ennui,ensue,enter,entry,envoy,epoch,epoxy,equal,equip,erase,erect,erode,error,erupt,essay,ester,ether,ethic,ethos,etude,evade,event,every,evict,evoke,exact,exalt,excel,exert,exile,exist,expel,extol,extra,exult,eying,fable,facet,faint,fairy,faith,false,fancy,fanny,farce,fatal,fatty,fault,fauna,favor,feast,fecal,feign,fella,felon,femme,femur,fence,feral,ferry,fetal,fetch,fetid,fetus,fever,fewer,fiber,fibre,ficus,field,fiend,fiery,fifth,fifty,fight,filer,filet,filly,filmy,filth,final,finch,finer,first,fishy,fixer,fizzy,fjord,flack,flail,flair,flake,flaky,flame,flank,flare,flash,flask,fleck,fleet,flesh,flick,flier,fling,flint,flirt,float,flock,flood,floor,flora,floss,flour,flout,flown,fluff,fluid,fluke,flume,flung,flunk,flush,flute,flyer,foamy,focal,focus,foggy,foist,folio,folly,foray,force,forge,forgo,forte,forth,forty,forum,found,foyer,frail,frame,frank,fraud,freak,freed,freer,fresh,friar,fried,frill,frisk,fritz,frock,frond,front,frost,froth,frown,froze,fruit,fudge,fugue,fully,fungi,funky,funny,furor,furry,fussy,fuzzy,gaffe,gaily,gamer,gamma,gamut,gassy,gaudy,gauge,gaunt,gauze,gavel,gawky,gayer,gayly,gazer,gecko,geeky,geese,genie,genre,ghost,ghoul,giant,giddy,gipsy,girly,girth,given,giver,glade,gland,glare,glass,glaze,gleam,glean,glide,glint,gloat,globe,gloom,glory,gloss,glove,glyph,gnash,gnome,godly,going,golem,golly,gonad,goner,goody,gooey,goofy,goose,gorge,gouge,gourd,grace,grade,graft,grail,grain,grand,grant,grape,graph,grasp,grass,grate,grave,gravy,graze,great,greed,green,greet,grief,grill,grime,grimy,grind,gripe,groan,groin,groom,grope,gross,group,grout,grove,growl,grown,gruel,gruff,grunt,guard,guava,guess,guest,guide,guild,guile,guilt,guise,gulch,gully,gumbo,gummy,guppy,gusto,gusty,gypsy,habit,hairy,halve,handy,happy,hardy,harem,harpy,harry,harsh,haste,hasty,hatch,hater,haunt,haute,haven,havoc,hazel,heady,heard,heart,heath,heave,heavy,hedge,hefty,heist,helix,hello,hence,heron,hilly,hinge,hippo,hippy,hitch,hoard,hobby,hoist,holly,homer,honey,honor,horde,horny,horse,hotel,hotly,hound,house,hovel,hover,howdy,human,humid,humor,humph,humus,hunch,hunky,hurry,husky,hussy,hutch,hydro,hyena,hymen,hyper,icily,icing,ideal,idiom,idiot,idler,idyll,igloo,iliac,image,imbue,impel,imply,inane,inbox,incur,index,inept,inert,infer,ingot,inlay,inlet,inner,input,inter,intro,ionic,irate,irony,islet,issue,itchy,ivory,jaunt,jazzy,jelly,jerky,jetty,jewel,jiffy,joint,joist,joker,jolly,joust,judge,juice,juicy,jumbo,jumpy,junta,junto,juror,kappa,karma,kayak,kebab,khaki,kinky,kiosk,kitty,knack,knave,knead,kneed,kneel,knelt,knife,knock,knoll,known,koala,krill,label,labor,laden,ladle,lager,lance,lanky,lapel,lapse,large,larva,lasso,latch,later,lathe,latte,laugh,layer,leach,leafy,leaky,leant,leapt,learn,lease,leash,least,leave,ledge,leech,leery,lefty,legal,leggy,lemon,lemur,leper,level,lever,libel,liege,light,liken,lilac,limbo,limit,linen,liner,lingo,lipid,lithe,liver,livid,llama,loamy,loath,lobby,local,locus,lodge,lofty,logic,login,loopy,loose,lorry,loser,louse,lousy,lover,lower,lowly,loyal,lucid,lucky,lumen,lumpy,lunar,lunch,lunge,lupus,lurch,lurid,lusty,lying,lymph,lynch,lyric,macaw,macho,macro,madam,madly,mafia,magic,magma,maize,major,maker,mambo,mamma,mammy,manga,mange,mango,mangy,mania,manic,manly,manor,maple,march,marry,marsh,mason,masse,match,matey,mauve,maxim,maybe,mayor,mealy,meant,meaty,mecca,medal,media,medic,melee,melon,mercy,merge,merit,merry,metal,meter,metro,micro,midge,midst,might,milky,mimic,mince,miner,minim,minor,minty,minus,mirth,miser,missy,mocha,modal,model,modem,mogul,moist,molar,moldy,money,month,moody,moose,moral,moron,morph,mossy,motel,motif,motor,motto,moult,mound,mount,mourn,mouse,mouth,mover,movie,mower,mucky,mucus,muddy,mulch,mummy,munch,mural,murky,mushy,music,musky,musty,myrrh,nadir,naive,nanny,nasal,nasty,natal,naval,navel,needy,neigh,nerdy,nerve,never,newer,newly,nicer,niche,niece,night,ninja,ninny,ninth,noble,nobly,noise,noisy,nomad,noose,north,nosey,notch,novel,nudge,nurse,nutty,nylon,nymph,oaken,obese,occur,ocean,octal,octet,odder,oddly,offal,offer,often,olden,older,olive,ombre,omega,onion,onset,opera,opine,opium,optic,orbit,order,organ,other,otter,ought,ounce,outdo,outer,outgo,ovary,ovate,overt,ovine,ovoid,owing,owner,oxide,ozone,paddy,pagan,paint,paler,palsy,panel,panic,pansy,papal,paper,parer,parka,parry,parse,party,pasta,paste,pasty,patch,patio,patsy,patty,pause,payee,payer,peace,peach,pearl,pecan,pedal,penal,pence,penne,penny,perch,peril,perky,pesky,pesto,petal,petty,phase,phone,phony,photo,piano,picky,piece,piety,piggy,pilot,pinch,piney,pinky,pinto,piper,pique,pitch,pithy,pivot,pixel,pixie,pizza,place,plaid,plain,plait,plane,plank,plant,plate,plaza,plead,pleat,plied,plier,pluck,plumb,plume,plump,plunk,plush,poesy,point,poise,poker,polar,polka,polyp,pooch,poppy,porch,poser,posit,posse,pouch,pound,pouty,power,prank,prawn,preen,press,price,prick,pride,pried,prime,primo,print,prior,prism,privy,prize,probe,prone,prong,proof,prose,proud,prove,prowl,proxy,prude,prune,psalm,pubic,pudgy,puffy,pulpy,pulse,punch,pupal,pupil,puppy,puree,purer,purge,purse,pushy,putty,pygmy,quack,quail,quake,qualm,quark,quart,quash,quasi,queen,queer,quell,query,quest,queue,quick,quiet,quill,quilt,quirk,quite,quota,quote,quoth,rabbi,rabid,racer,radar,radii,radio,rainy,raise,rajah,rally,ralph,ramen,ranch,randy,range,rapid,rarer,raspy,ratio,ratty,raven,rayon,razor,reach,react,ready,realm,rearm,rebar,rebel,rebus,rebut,recap,recur,recut,reedy,refer,refit,regal,rehab,reign,relax,relay,relic,remit,renal,renew,repay,repel,reply,rerun,reset,resin,retch,retro,retry,reuse,revel,revue,rhino,rhyme,rider,ridge,rifle,right,rigid,rigor,rinse,ripen,riper,risen,riser,risky,rival,river,rivet,roach,roast,robin,robot,rocky,rodeo,roger,rogue,roomy,roost,rotor,rouge,rough,round,rouse,route,rover,rowdy,rower,royal,ruddy,ruder,rugby,ruler,rumba,rumor,rupee,rural,rusty,sadly,safer,saint,salad,sally,salon,salsa,salty,salve,salvo,sandy,saner,sappy,sassy,satin,satyr,sauce,saucy,sauna,saute,savor,savoy,savvy,scald,scale,scalp,scaly,scamp,scant,scare,scarf,scary,scene,scent,scion,scoff,scold,scone,scoop,scope,score,scorn,scour,scout,scowl,scram,scrap,scree,screw,scrub,scrum,scuba,sedan,seedy,segue,seize,semen,sense,sepia,serif,serum,serve,setup,seven,sever,sewer,shack,shade,shady,shaft,shake,shaky,shale,shall,shalt,shame,shank,shape,shard,share,shark,sharp,shave,shawl,shear,sheen,sheep,sheer,sheet,sheik,shelf,shell,shied,shift,shine,shiny,shire,shirk,shirt,shoal,shock,shone,shook,shoot,shore,shorn,short,shout,shove,shown,showy,shrew,shrub,shrug,shuck,shunt,shush,shyly,siege,sieve,sight,sigma,silky,silly,since,sinew,singe,siren,sissy,sixth,sixty,skate,skier,skiff,skill,skimp,skirt,skulk,skull,skunk,slack,slain,slang,slant,slash,slate,slave,sleek,sleep,sleet,slept,slice,slick,slide,slime,slimy,sling,slink,sloop,slope,slosh,sloth,slump,slung,slunk,slurp,slush,slyly,smack,small,smart,smash,smear,smell,smelt,smile,smirk,smite,smith,smock,smoke,smoky,smote,snack,snail,snake,snaky,snare,snarl,sneak,sneer,snide,sniff,snipe,snoop,snore,snort,snout,snowy,snuck,snuff,soapy,sober,soggy,solar,solid,solve,sonar,sonic,sooth,sooty,sorry,sound,south,sower,space,spade,spank,spare,spark,spasm,spawn,speak,spear,speck,speed,spell,spelt,spend,spent,sperm,spice,spicy,spied,spiel,spike,spiky,spill,spilt,spine,spiny,spire,spite,splat,split,spoil,spoke,spoof,spook,spool,spoon,spore,sport,spout,spray,spree,sprig,spunk,spurn,spurt,squad,squat,squib,stack,staff,stage,staid,stain,stair,stake,stale,stalk,stall,stamp,stand,stank,stare,stark,start,stash,state,stave,stead,steak,steal,steam,steed,steel,steep,steer,stein,stern,stick,stiff,still,stilt,sting,stink,stint,stock,stoic,stoke,stole,stomp,stone,stony,stood,stool,stoop,store,stork,storm,story,stout,stove,strap,straw,stray,strip,strut,stuck,study,stuff,stump,stung,stunk,stunt,style,suave,sugar,suing,suite,sulky,sully,sumac,sunny,super,surer,surge,surly,sushi,swami,swamp,swarm,swash,swath,swear,sweat,sweep,sweet,swell,swept,swift,swill,swine,swing,swirl,swish,swoon,swoop,sword,swore,sworn,swung,synod,syrup,tabby,table,taboo,tacit,tacky,taffy,taint,taken,taker,tally,talon,tamer,tango,tangy,taper,tapir,tardy,tarot,taste,tasty,tatty,taunt,tawny,teach,teary,tease,teddy,teeth,tempo,tenet,tenor,tense,tenth,tepee,tepid,terra,terse,testy,thank,theft,their,theme,there,these,theta,thick,thief,thigh,thing,think,third,thong,thorn,those,three,threw,throb,throw,thrum,thumb,thump,thyme,tiara,tibia,tidal,tiger,tight,tilde,timer,timid,tipsy,titan,tithe,title,toast,today,toddy,token,tonal,tonga,tonic,tooth,topaz,topic,torch,torso,torus,total,totem,touch,tough,towel,tower,toxic,toxin,trace,track,tract,trade,trail,train,trait,tramp,trash,trawl,tread,treat,trend,triad,trial,tribe,trice,trick,tried,tripe,trite,troll,troop,trope,trout,trove,truce,truck,truer,truly,trump,trunk,truss,trust,truth,tryst,tubal,tuber,tulip,tulle,tumor,tunic,turbo,tutor,twang,tweak,tweed,tweet,twice,twine,twirl,twist,twixt,tying,udder,ulcer,ultra,umbra,uncle,uncut,under,undid,undue,unfed,unfit,unify,union,unite,unity,unlit,unmet,unset,untie,until,unwed,unzip,upper,upset,urban,urine,usage,usher,using,usual,usurp,utile,utter,vague,valet,valid,valor,value,valve,vapid,vapor,vault,vaunt,vegan,venom,venue,verge,verse,verso,verve,vicar,video,vigil,vigor,villa,vinyl,viola,viper,viral,virus,visit,visor,vista,vital,vivid,vixen,vocal,vodka,vogue,voice,voila,vomit,voter,vouch,vowel,vying,wacky,wafer,wager,wagon,waist,waive,waltz,warty,waste,watch,water,waver,waxen,weary,weave,wedge,weedy,weigh,weird,welch,welsh,wench,whack,whale,wharf,wheat,wheel,whelp,where,which,whiff,while,whine,whiny,whirl,whisk,white,whole,whoop,whose,widen,wider,widow,width,wield,wight,willy,wimpy,wince,winch,windy,wiser,wispy,witch,witty,woken,woman,women,woody,wooer,wooly,woozy,wordy,world,worry,worse,worst,worth,would,wound,woven,wrack,wrath,wreak,wreck,wrest,wring,wrist,write,wrong,wrote,wrung,wryly,yacht,yearn,yeast,yield,young,youth,zebra,zesty,zonal";
+
+const WORDS = _RAW.split(",").sort();
+Object.freeze(WORDS);
+const WORD_SET = new Set(WORDS);
+
+// =====================================================================
+// CONSTANTS
+// =====================================================================
+const MAX_GUESSES = 5;
+const STORAGE_KEY = "lexiguess_v1";
+const KB_ROWS = [
+  ["q","w","e","r","t","y","u","i","o","p"],
+  ["a","s","d","f","g","h","j","k","l"],
+  ["Enter","z","x","c","v","b","n","m","⌫"]
+];
+
+// =====================================================================
+// SEEDED RNG  (mulberry32)
+// =====================================================================
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+  }
+  return h >>> 0;
+}
+
+function mulberry32(seed) {
+  return function () {
+    seed |= 0;
+    seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function getDailySeed() {
+  // Priority: URL param > window.SEED > localStorage override > today's date
+  const urlSeed = new URLSearchParams(location.search).get("seed");
+  if (urlSeed) return urlSeed;
+  if (typeof window.SEED === "string" && window.SEED.length > 0) return window.SEED;
+  try { const ls = localStorage.getItem("lexiguess_seed_override"); if (ls) return ls; } catch(_) {}
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+// Console helper: sets seed and reloads via URL param so it survives reload
+window.setSeed = function(s) {
+  if (s) {
+    const url = new URL(location.href);
+    url.searchParams.set("seed", s);
+    location.href = url.toString();
+  } else {
+    // Clear override
+    const url = new URL(location.href);
+    url.searchParams.delete("seed");
+    localStorage.removeItem("lexiguess_seed_override");
+    location.href = url.toString();
+  }
+};
+
+function getDailyWord() {
+  const seed = getDailySeed();
+  const rng = mulberry32(hashStr(seed));
+  rng(); rng(); // warm up
+  const idx = Math.floor(rng() * WORDS.length);
+  return { word: WORDS[idx], index: idx, seed };
+}
+
+// =====================================================================
+// BINARY SEARCH (O(log n) index lookup)
+// =====================================================================
+function binarySearch(arr, target) {
+  let lo = 0, hi = arr.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (arr[mid] === target) return mid;
+    arr[mid] < target ? (lo = mid + 1) : (hi = mid - 1);
+  }
+  return -1;
+}
+
+// =====================================================================
+// STATE
+// =====================================================================
+let state = {
+  seed: "",
+  target: "",
+  targetIdx: -1,
+  input: [],          // array of chars, max 5
+  guesses: [],        // { word, index, distance }[]
+  totalScore: 0,
+  status: "playing"   // "playing" | "finished"
+};
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      seed: state.seed,
+      target: state.target,
+      targetIdx: state.targetIdx,
+      guesses: state.guesses,
+      totalScore: state.totalScore,
+      status: state.status
+    }));
+  } catch (_) {}
+}
+
+function loadStoredState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (_) { return null; }
+}
+
+// =====================================================================
+// COLOR HELPERS
+// =====================================================================
+function distColor(dist) {
+  if (dist === 0)   return "#538d4e";
+  if (dist <= 10)   return "#538d4e";
+  if (dist <= 50)   return "#b59f3b";
+  if (dist <= 200)  return "#e07040";
+  return "#c0392b";
+}
+
+function distBarWidth(dist) {
+  // 0 → 0%, 500+ → 100%
+  return Math.min(100, Math.round(dist / 5));
+}
+
+function ratingText(score) {
+  if (score === 0)    return "⭐ Perfect — Distance 0 on every guess!";
+  if (score <= 10)    return "⭐ Incredible!";
+  if (score <= 30)    return "🎯 Excellent!";
+  if (score <= 80)    return "👍 Great!";
+  if (score <= 200)   return "😊 Good";
+  if (score <= 500)   return "😐 Not bad";
+  if (score <= 1000)  return "😬 Tough one";
+  return "💪 Keep practicing!";
+}
+
+// =====================================================================
+// DOM REFS
+// =====================================================================
+const $ = id => document.getElementById(id);
+
+const elTargetTiles   = $("target-tiles");
+const elInputTiles    = $("input-tiles");
+const elGuessesSec    = $("guesses-section");
+const elRunningScore  = $("running-score");
+const elGuessesLeft   = $("guesses-left");
+const elBtnGuess      = $("btn-guess");
+const elBtnShare      = $("btn-share");
+const elKeyboard      = $("keyboard");
+const elToast         = $("toast");
+const elModalHelp     = $("modal-help");
+const elModalEnd      = $("modal-end");
+const elResultTarget  = $("result-target");
+const elResultScore   = $("result-score");
+const elResultRating  = $("result-rating");
+const elResultGuesses = $("result-guesses");
+const elResultTimer   = $("result-timer");
+const elInputSection  = $("input-section");
+
+// =====================================================================
+// RENDER
+// =====================================================================
+function renderTargetTiles() {
+  elTargetTiles.innerHTML = "";
+  for (const ch of state.target) {
+    const d = document.createElement("div");
+    d.className = "tile tile-target";
+    d.textContent = ch.toUpperCase();
+    elTargetTiles.appendChild(d);
+  }
+}
+
+function renderInputTiles() {
+  elInputTiles.innerHTML = "";
+  for (let i = 0; i < 5; i++) {
+    const d = document.createElement("div");
+    d.className = "tile" + (state.input[i] ? " filled" : "") + (i === state.input.length && state.status === "playing" ? " active" : "");
+    d.textContent = state.input[i] ? state.input[i].toUpperCase() : "";
+    elInputTiles.appendChild(d);
+  }
+}
+
+function renderGuessRow(g) {
+  const row = document.createElement("div");
+  const color = distColor(g.distance);
+  row.className = "guess-row";
+  row.style.borderLeftColor = color;
+
+  const tilesDiv = document.createElement("div");
+  tilesDiv.className = "guess-row-tiles";
+  for (const ch of g.word) {
+    const t = document.createElement("div");
+    t.className = "tile guess-tile";
+    t.style.borderColor = color;
+    t.style.color = color;
+    t.textContent = ch.toUpperCase();
+    tilesDiv.appendChild(t);
+  }
+
+  const barWrap = document.createElement("div");
+  barWrap.className = "guess-bar-wrap";
+  const bar = document.createElement("div");
+  bar.className = "guess-bar";
+  bar.style.background = color;
+  barWrap.appendChild(bar);
+
+  const distEl = document.createElement("span");
+  distEl.className = "guess-dist";
+  distEl.style.color = color;
+  distEl.textContent = g.distance === 0 ? "EXACT!" : `±${g.distance}`;
+
+  row.appendChild(tilesDiv);
+  row.appendChild(barWrap);
+  row.appendChild(distEl);
+  elGuessesSec.appendChild(row);
+
+  // animate bar after paint
+  requestAnimationFrame(() => {
+    bar.style.width = distBarWidth(g.distance) + "%";
+  });
+}
+
+function renderAllGuesses() {
+  elGuessesSec.innerHTML = "";
+  for (const g of state.guesses) renderGuessRow(g);
+}
+
+function renderScoreBar() {
+  elRunningScore.textContent = state.totalScore;
+  const remaining = MAX_GUESSES - state.guesses.length;
+  elGuessesLeft.textContent = remaining === 1
+    ? "1 guess remaining"
+    : remaining === 0
+      ? "No guesses remaining"
+      : `${remaining} guesses remaining`;
+}
+
+function renderKeyboard() {
+  elKeyboard.innerHTML = "";
+  for (const row of KB_ROWS) {
+    const rowEl = document.createElement("div");
+    rowEl.className = "kb-row";
+    for (const key of row) {
+      const btn = document.createElement("button");
+      btn.className = "kb-key" + (key === "Enter" || key === "⌫" ? " wide" : "");
+      btn.textContent = key;
+      btn.dataset.key = key;
+      btn.type = "button";
+      rowEl.appendChild(btn);
+    }
+    elKeyboard.appendChild(rowEl);
+  }
+}
+
+// =====================================================================
+// TOAST
+// =====================================================================
+let toastTimer = null;
+function showToast(msg, duration = 1800) {
+  elToast.textContent = msg;
+  elToast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { elToast.hidden = true; }, duration);
+}
+
+// =====================================================================
+// INPUT ACTIONS
+// =====================================================================
+function addLetter(ch) {
+  if (state.status !== "playing") return;
+  if (state.input.length >= 5) return;
+  state.input.push(ch.toLowerCase());
+  renderInputTiles();
+}
+
+function deleteLetter() {
+  if (state.status !== "playing") return;
+  if (state.input.length === 0) return;
+  state.input.pop();
+  renderInputTiles();
+}
+
+function shakeInput() {
+  elInputTiles.classList.remove("shake");
+  void elInputTiles.offsetWidth; // reflow
+  elInputTiles.classList.add("shake");
+}
+
+function submitGuess() {
+  if (state.status !== "playing") return;
+  const word = state.input.join("").toLowerCase();
+
+  if (word.length !== 5) {
+    showToast("Not enough letters");
+    shakeInput();
+    return;
+  }
+
+  if (!WORD_SET.has(word)) {
+    showToast("Not in word list");
+    shakeInput();
+    return;
+  }
+
+  if (state.guesses.some(g => g.word === word)) {
+    showToast("Already guessed!");
+    shakeInput();
+    return;
+  }
+
+  const idx = binarySearch(WORDS, word);
+  const distance = Math.abs(idx - state.targetIdx);
+  const guess = { word, index: idx, distance };
+
+  state.guesses.push(guess);
+  state.totalScore += distance;
+  state.input = [];
+
+  renderGuessRow(guess);
+  renderInputTiles();
+  renderScoreBar();
+  saveState();
+
+  const gameOver = state.guesses.length >= MAX_GUESSES;
+  if (gameOver) {
+    state.status = "finished";
+    saveState();
+    elInputSection.style.opacity = "0.4";
+    elInputSection.style.pointerEvents = "none";
+    elKeyboard.style.opacity = "0.4";
+    elKeyboard.style.pointerEvents = "none";
+    elBtnShare.hidden = false;
+    setTimeout(() => showEndModal(), 700);
+  }
+}
+
+// =====================================================================
+// END GAME MODAL
+// =====================================================================
+function buildResultHTML() {
+  elResultTarget.textContent = state.target.toUpperCase();
+
+  elResultScore.textContent = state.totalScore;
+  elResultScore.style.color = distColor(state.totalScore / 5);
+  elResultRating.textContent = ratingText(state.totalScore);
+
+  elResultGuesses.innerHTML = "";
+  for (const g of state.guesses) {
+    const row = document.createElement("div");
+    row.className = "result-guess-row";
+    const color = distColor(g.distance);
+    row.innerHTML = `
+      <span class="result-guess-word">${g.word.toUpperCase()}</span>
+      <div class="result-dist-bar-wrap">
+        <div class="result-dist-bar" style="background:${color};width:${distBarWidth(g.distance)}%"></div>
+      </div>
+      <span class="result-dist-num" style="color:${color}">${g.distance === 0 ? "EXACT" : "±" + g.distance}</span>
+    `;
+    elResultGuesses.appendChild(row);
+  }
+
+  updateResultTimer();
+}
+
+function showEndModal() {
+  buildResultHTML();
+  elModalEnd.hidden = false;
+  startResultTimer();
+}
+
+let timerInterval = null;
+function updateResultTimer() {
+  const now = new Date();
+  const tom = new Date(now);
+  tom.setDate(tom.getDate() + 1);
+  tom.setHours(0, 0, 0, 0);
+  const diff = tom - now;
+  const h = Math.floor(diff / 3_600_000);
+  const m = Math.floor((diff % 3_600_000) / 60_000);
+  const s = Math.floor((diff % 60_000) / 1_000);
+  elResultTimer.textContent = `Next puzzle in ${h}h ${String(m).padStart(2,"0")}m ${String(s).padStart(2,"0")}s`;
+}
+
+function startResultTimer() {
+  clearInterval(timerInterval);
+  timerInterval = setInterval(updateResultTimer, 1000);
+}
+
+// =====================================================================
+// SHARE
+// =====================================================================
+function buildShareText() {
+  const seed = state.seed;
+  const lines = [`LexiGuess ${seed}`, `Target: ${state.target.toUpperCase()}  Score: ${state.totalScore}`, ""];
+  for (const g of state.guesses) {
+    const filled = Math.min(5, Math.round(g.distance / 100));
+    const bar = "█".repeat(filled) + "░".repeat(5 - filled);
+    lines.push(`${g.word.toUpperCase()}  ${bar}  ±${g.distance}`);
+  }
+  lines.push("", "Play at lexiguess.app");
+  return lines.join("\n");
+}
+
+async function copyShare() {
+  const text = buildShareText();
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("Copied to clipboard!");
+  } catch (_) {
+    // Fallback
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    showToast("Copied to clipboard!");
+  }
+}
+
+// =====================================================================
+// MODALS
+// =====================================================================
+function openModal(el) {
+  el.hidden = false;
+}
+function closeModal(el) {
+  el.hidden = true;
+}
+
+// =====================================================================
+// EVENT LISTENERS
+// =====================================================================
+// Physical keyboard
+document.addEventListener("keydown", e => {
+  if (!elModalHelp.hidden || !elModalEnd.hidden) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === "Enter") submitGuess();
+  else if (e.key === "Backspace") deleteLetter();
+  else if (/^[a-zA-Z]$/.test(e.key)) addLetter(e.key);
+});
+
+// Virtual keyboard
+elKeyboard.addEventListener("click", e => {
+  const btn = e.target.closest(".kb-key");
+  if (!btn) return;
+  const key = btn.dataset.key;
+  if (key === "Enter") submitGuess();
+  else if (key === "⌫") deleteLetter();
+  else addLetter(key);
+});
+
+// Guess button
+elBtnGuess.addEventListener("click", submitGuess);
+
+// Header share button
+elBtnShare.addEventListener("click", () => {
+  if (state.status === "finished") showEndModal();
+});
+
+// Help button
+$("btn-help").addEventListener("click", () => openModal(elModalHelp));
+
+// Share button in result modal
+$("btn-share-end").addEventListener("click", copyShare);
+
+// Close buttons
+document.querySelectorAll("[data-close]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    closeModal($(btn.dataset.close));
+  });
+});
+
+// Close modal on backdrop click
+[elModalHelp, elModalEnd].forEach(modal => {
+  modal.addEventListener("click", e => {
+    if (e.target === modal) closeModal(modal);
+  });
+});
+
+// =====================================================================
+// INIT
+// =====================================================================
+function init() {
+  const daily = getDailyWord();
+
+  // Try to restore saved state for today
+  const stored = loadStoredState();
+  if (stored && stored.seed === daily.seed) {
+    Object.assign(state, stored);
+    state.input = [];
+  } else {
+    state.seed     = daily.seed;
+    state.target   = daily.word;
+    state.targetIdx = daily.index;
+    state.input    = [];
+    state.guesses  = [];
+    state.totalScore = 0;
+    state.status   = "playing";
+  }
+
+  // Console helper
+  console.log(`%cLexiGuess`, "font-size:1.2rem;font-weight:bold;color:#538d4e");
+  console.log(`Seed: ${state.seed}`);
+  console.log(`Override: setSeed("any-string") or add ?seed=any-string to URL`);
+  console.log(`Word list size: ${WORDS.length} words`);
+
+  renderTargetTiles();
+  renderKeyboard();
+  renderAllGuesses();
+  renderScoreBar();
+  renderInputTiles();
+
+  if (state.status === "finished") {
+    elInputSection.style.opacity = "0.4";
+    elInputSection.style.pointerEvents = "none";
+    elKeyboard.style.opacity = "0.4";
+    elKeyboard.style.pointerEvents = "none";
+    elBtnShare.hidden = false;
+    showEndModal();
+    startResultTimer();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
